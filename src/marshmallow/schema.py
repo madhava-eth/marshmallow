@@ -48,17 +48,7 @@ def _get_fields(attrs) -> list[tuple[str, Field]]:
 
     :param attrs: Mapping of class attributes
     """
-    ret = []
-    for field_name, field_value in attrs.items():
-        if isinstance(field_value, type) and issubclass(field_value, ma_fields.Field):
-            raise TypeError(
-                f'Field for "{field_name}" must be declared as a '
-                "Field instance, not a class. "
-                f'Did you mean "fields.{field_value.__name__}()"?'
-            )
-        if isinstance(field_value, ma_fields.Field):
-            ret.append((field_name, field_value))
-    return ret
+    pass
 
 
 # This function allows Schemas to inherit from non-Schema classes and ensures
@@ -70,20 +60,7 @@ def _get_fields_by_mro(klass: SchemaMeta):
 
     :param klass: Class whose fields to retrieve
     """
-    mro = inspect.getmro(klass)
-    # Combine fields from all parents
-    # functools.reduce(operator.iadd, list_of_lists) is faster than sum(list_of_lists, [])
-    # Loop over mro in reverse to maintain correct order of fields
-    return functools.reduce(
-        operator.iadd,
-        (
-            _get_fields(
-                getattr(base, "_declared_fields", base.__dict__),
-            )
-            for base in mro[:0:-1]
-        ),
-        [],
-    )
+    pass
 
 
 class SchemaMeta(ABCMeta):
@@ -147,7 +124,7 @@ class SchemaMeta(ABCMeta):
         :param inherited_fields: Inherited fields.
         :param dict_cls: dict-like class to use for dict output Default to ``dict``.
         """
-        return dict_cls(inherited_fields + cls_fields)
+        pass
 
     def __init__(cls, name, bases, attrs):
         super().__init__(name, bases, attrs)
@@ -161,42 +138,7 @@ class SchemaMeta(ABCMeta):
         By doing this after constructing the class, we let standard inheritance
         do all the hard work.
         """
-        mro = inspect.getmro(cls)
-
-        hooks: dict[str, list[tuple[str, bool, dict]]] = defaultdict(list)
-
-        for attr_name in dir(cls):
-            # Need to look up the actual descriptor, not whatever might be
-            # bound to the class. This needs to come from the __dict__ of the
-            # declaring class.
-            for parent in mro:
-                try:
-                    attr = parent.__dict__[attr_name]
-                except KeyError:
-                    continue
-                else:
-                    break
-            else:
-                # In case we didn't find the attribute and didn't break above.
-                # We should never hit this - it's just here for completeness
-                # to exclude the possibility of attr being undefined.
-                continue
-
-            try:
-                hook_config: dict[str, list[tuple[bool, dict]]] = (
-                    attr.__marshmallow_hook__
-                )
-            except AttributeError:
-                pass
-            else:
-                for tag, config in hook_config.items():
-                    # Use name here so we can get the bound method later, in
-                    # case the processor was a descriptor or something.
-                    hooks[tag].extend(
-                        (attr_name, many, kwargs) for many, kwargs in config
-                    )
-
-        return hooks
+        pass
 
 
 class SchemaOpts:
@@ -476,10 +418,7 @@ class Schema(metaclass=SchemaMeta):
 
         .. versionadded:: 3.0.0
         """
-        Meta = type(
-            "GeneratedMeta", (getattr(cls, "Meta", object),), {"register": False}
-        )
-        return type(name, (cls,), {**fields.copy(), "Meta": Meta})
+        pass
 
     ##### Override-able methods #####
 
@@ -503,7 +442,7 @@ class Schema(metaclass=SchemaMeta):
         .. versionchanged:: 3.0.0a1
             Changed position of ``obj`` and ``attr``.
         """
-        return get_value(obj, attr, default)
+        pass
 
     ##### Serialization/Deserialization API #####
 
@@ -534,16 +473,7 @@ class Schema(metaclass=SchemaMeta):
         :param many: `True` if ``data`` should be serialized as a collection.
         :return: A dictionary of the serialized data
         """
-        if many and obj is not None:
-            return [self._serialize(d, many=False) for d in obj]
-        ret = self.dict_class()
-        for attr_name, field_obj in self.dump_fields.items():
-            value = field_obj.serialize(attr_name, obj, accessor=self.get_attribute)
-            if value is missing:
-                continue
-            key = field_obj.data_key if field_obj.data_key is not None else attr_name
-            ret[key] = value
-        return ret
+        pass
 
     def dump(self, obj: typing.Any, *, many: bool | None = None):
         """Serialize an object to native Python data types according to this
@@ -561,22 +491,7 @@ class Schema(metaclass=SchemaMeta):
         .. versionchanged:: 3.0.0rc9
             Validation no longer occurs upon serialization.
         """
-        many = self.many if many is None else bool(many)
-        if self._hooks[PRE_DUMP]:
-            processed_obj = self._invoke_dump_processors(
-                PRE_DUMP, obj, many=many, original_data=obj
-            )
-        else:
-            processed_obj = obj
-
-        result = self._serialize(processed_obj, many=many)
-
-        if self._hooks[POST_DUMP]:
-            result = self._invoke_dump_processors(
-                POST_DUMP, result, many=many, original_data=obj
-            )
-
-        return result
+        pass
 
     def dumps(self, obj: typing.Any, *args, many: bool | None = None, **kwargs):
         """Same as :meth:`dump`, except return a JSON-encoded string.
@@ -591,8 +506,7 @@ class Schema(metaclass=SchemaMeta):
             A :exc:`ValidationError <marshmallow.exceptions.ValidationError>` is raised
             if ``obj`` is invalid.
         """
-        serialized = self.dump(obj, many=many)
-        return self.opts.render_module.dumps(serialized, *args, **kwargs)
+        pass
 
     def _deserialize(
         self,
@@ -668,15 +582,6 @@ class Schema(metaclass=SchemaMeta):
                 elif partial is not None:
                     d_kwargs["partial"] = partial
 
-                def getter(
-                    val, field_obj=field_obj, field_name=field_name, d_kwargs=d_kwargs
-                ):
-                    return field_obj.deserialize(
-                        val,
-                        field_name,
-                        data,
-                        **d_kwargs,
-                    )
 
                 value = self._call_and_store(
                     getter_func=getter,
@@ -768,8 +673,7 @@ class Schema(metaclass=SchemaMeta):
         .. versionchanged:: 4.0.0
             Rename ``json_module`` parameter to ``s``.
         """
-        data = self.opts.render_module.loads(s, **kwargs)
-        return self.load(data, many=many, partial=partial, unknown=unknown)
+        pass
 
     def _run_validator(
         self,
@@ -948,117 +852,24 @@ class Schema(metaclass=SchemaMeta):
         """Apply then flatten nested schema options.
         This method is private API.
         """
-        if self.only is not None:
-            # Apply the only option to nested fields.
-            self.__apply_nested_option("only", self.only, "intersection")
-            # Remove the child field names from the only option.
-            self.only = self.set_class([field.split(".", 1)[0] for field in self.only])
-        if self.exclude:
-            # Apply the exclude option to nested fields.
-            self.__apply_nested_option("exclude", self.exclude, "union")
-            # Remove the parent field names from the exclude option.
-            self.exclude = self.set_class(
-                [field for field in self.exclude if "." not in field]
-            )
+        pass
 
     def __apply_nested_option(self, option_name, field_names, set_operation) -> None:
         """Apply nested options to nested fields"""
-        # Split nested field names on the first dot.
-        nested_fields = [name.split(".", 1) for name in field_names if "." in name]
-        # Partition the nested field names by parent field.
-        nested_options = defaultdict(list)  # type: defaultdict
-        for parent, nested_names in nested_fields:
-            nested_options[parent].append(nested_names)
-        # Apply the nested field options.
-        for key, options in iter(nested_options.items()):
-            new_options = self.set_class(options)
-            original_options = getattr(self.declared_fields[key], option_name, ())
-            if original_options:
-                if set_operation == "union":
-                    new_options |= self.set_class(original_options)
-                if set_operation == "intersection":
-                    new_options &= self.set_class(original_options)
-            setattr(self.declared_fields[key], option_name, new_options)
+        pass
 
     def _init_fields(self) -> None:
         """Update self.fields, self.load_fields, and self.dump_fields based on schema options.
         This method is private API.
         """
-        if self.opts.fields:
-            available_field_names = self.set_class(self.opts.fields)
-        else:
-            available_field_names = self.set_class(self.declared_fields.keys())
-
-        invalid_fields = self.set_class()
-
-        if self.only is not None:
-            # Return only fields specified in only option
-            field_names: typing.AbstractSet[typing.Any] = self.set_class(self.only)
-
-            invalid_fields |= field_names - available_field_names
-        else:
-            field_names = available_field_names
-
-        # If "exclude" option or param is specified, remove those fields.
-        if self.exclude:
-            # Note that this isn't available_field_names, since we want to
-            # apply "only" for the actual calculation.
-            field_names = field_names - self.exclude
-            invalid_fields |= self.exclude - available_field_names
-
-        if invalid_fields:
-            message = f"Invalid fields for {self}: {invalid_fields}."
-            raise ValueError(message)
-
-        fields_dict = self.dict_class()
-        for field_name in field_names:
-            field_obj = self.declared_fields[field_name]
-            self._bind_field(field_name, field_obj)
-            fields_dict[field_name] = field_obj
-
-        load_fields, dump_fields = self.dict_class(), self.dict_class()
-        for field_name, field_obj in fields_dict.items():
-            if not field_obj.dump_only:
-                load_fields[field_name] = field_obj
-            if not field_obj.load_only:
-                dump_fields[field_name] = field_obj
-
-        dump_data_keys = [
-            field_obj.data_key if field_obj.data_key is not None else name
-            for name, field_obj in dump_fields.items()
-        ]
-        if len(dump_data_keys) != len(set(dump_data_keys)):
-            data_keys_duplicates = {
-                x for x in dump_data_keys if dump_data_keys.count(x) > 1
-            }
-            raise ValueError(
-                "The data_key argument for one or more fields collides "
-                "with another field's name or data_key argument. "
-                "Check the following field names and "
-                f"data_key arguments: {list(data_keys_duplicates)}"
-            )
-        load_attributes = [obj.attribute or name for name, obj in load_fields.items()]
-        if len(load_attributes) != len(set(load_attributes)):
-            attributes_duplicates = {
-                x for x in load_attributes if load_attributes.count(x) > 1
-            }
-            raise ValueError(
-                "The attribute argument for one or more fields collides "
-                "with another field's name or attribute argument. "
-                "Check the following field names and "
-                f"attribute arguments: {list(attributes_duplicates)}"
-            )
-
-        self.fields = fields_dict
-        self.dump_fields = dump_fields
-        self.load_fields = load_fields
+        pass
 
     def on_bind_field(self, field_name: str, field_obj: Field) -> None:
         """Hook to modify a field when it is bound to the `Schema <marshmallow.Schema>`.
 
         No-op by default.
         """
-        return
+        pass
 
     def _bind_field(self, field_name: str, field_obj: Field) -> None:
         """Bind field to the schema, setting any necessary attributes on the
@@ -1067,29 +878,8 @@ class Schema(metaclass=SchemaMeta):
         Also set field load_only and dump_only values if field_name was
         specified in `class Meta <marshmallow.Schema.Meta>`.
         """
-        if field_name in self.load_only:
-            field_obj.load_only = True
-        if field_name in self.dump_only:
-            field_obj.dump_only = True
-        field_obj._bind_to_schema(field_name, self)
-        self.on_bind_field(field_name, field_obj)
+        pass
 
-    def _invoke_dump_processors(
-        self, tag: str, data, *, many: bool, original_data=None
-    ):
-        # The pass_collection post-dump processors may do things like add an envelope, so
-        # invoke those after invoking the non-pass_collection processors which will expect
-        # to get a list of items.
-        data = self._invoke_processors(
-            tag,
-            pass_collection=False,
-            data=data,
-            many=many,
-            original_data=original_data,
-        )
-        return self._invoke_processors(
-            tag, pass_collection=True, data=data, many=many, original_data=original_data
-        )
 
     def _invoke_load_processors(
         self,

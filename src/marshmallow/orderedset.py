@@ -37,11 +37,6 @@ class OrderedSet(MutableSet):  # noqa: PLW1641
     def __contains__(self, key):
         return key in self.map
 
-    def add(self, key):
-        if key not in self.map:
-            end = self.end
-            curr = end[1]
-            curr[2] = end[1] = self.map[key] = [key, curr, end]
 
     def discard(self, key):
         if key in self.map:

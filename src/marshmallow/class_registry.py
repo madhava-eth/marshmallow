@@ -46,27 +46,7 @@ def register(classname: str, cls: SchemaType) -> None:
         # }
 
     """
-    # Module where the class is located
-    module = cls.__module__
-    # Full module path to the class
-    # e.g. user.schemas.UserSchema
-    fullpath = f"{module}.{classname}"
-    # If the class is already registered; need to check if the entries are
-    # in the same module as cls to avoid having multiple instances of the same
-    # class in the registry
-    if classname in _registry and not any(
-        each.__module__ == module for each in _registry[classname]
-    ):
-        _registry[classname].append(cls)
-    elif classname not in _registry:
-        _registry[classname] = [cls]
-
-    # Also register the full path
-    if fullpath not in _registry:
-        _registry.setdefault(fullpath, []).append(cls)
-    else:
-        # If fullpath does exist, replace existing entry
-        _registry[fullpath] = [cls]
+    pass
 
 
 @typing.overload

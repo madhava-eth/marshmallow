@@ -36,7 +36,7 @@ class Validator(ABC):
         """A string representation of the args passed to this validator. Used by
         `__repr__`.
         """
-        return ""
+        pass
 
     @abstractmethod
     def __call__(self, value: typing.Any) -> typing.Any: ...
@@ -65,8 +65,6 @@ class And(Validator):
     def __init__(self, *validators: types.Validator):
         self.validators = tuple(validators)
 
-    def _repr_args(self) -> str:
-        return f"validators={self.validators!r}"
 
     def __call__(self, value: typing.Any) -> typing.Any:
         errors: list[str | dict] = []
@@ -101,78 +99,6 @@ class URL(Validator):
         def __init__(self):
             self._memoized: dict[tuple[bool, bool, bool], re.Pattern[str]] = {}
 
-        def _regex_generator(
-            self, *, relative: bool, absolute: bool, require_tld: bool
-        ) -> re.Pattern[str]:
-            hostname_variants = [
-                # a normal domain name, expressed in [A-Z0-9] chars (plus unicode letters)
-                # with hyphens allowed only in the middle
-                # note that the regex will be compiled with IGNORECASE, so these are upper and lowercase chars
-                (
-                    r"(?:[A-Z0-9"
-                    + _UNICODE_LETTERS
-                    + r"](?:[A-Z0-9"
-                    + _UNICODE_LETTERS
-                    + r"-]{0,61}[A-Z0-9"
-                    + _UNICODE_LETTERS
-                    + r"])?\.)+"
-                    r"(?:[A-Z"
-                    + _UNICODE_LETTERS
-                    + r"]{2,6}\.?|[A-Z0-9"
-                    + _UNICODE_LETTERS
-                    + r"-]{2,}\.?)"
-                ),
-                # or the special string 'localhost'
-                r"localhost",
-                # or IPv4
-                r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",
-                # or IPv6
-                r"\[[A-F0-9]*:[A-F0-9:]+\]",
-            ]
-            if not require_tld:
-                # allow dotless hostnames
-                hostname_variants.append(
-                    r"(?:[A-Z0-9"
-                    + _UNICODE_LETTERS
-                    + r"](?:[A-Z0-9"
-                    + _UNICODE_LETTERS
-                    + r"-]{0,61}[A-Z0-9"
-                    + _UNICODE_LETTERS
-                    + r"])?\.?)"
-                )
-
-            absolute_part = "".join(
-                (
-                    # scheme (e.g. 'https://', 'ftp://', etc)
-                    # this is validated separately against allowed schemes, so in the regex
-                    # we simply want to capture its existence
-                    r"(?:[a-z0-9\.\-\+]*)://",
-                    # userinfo, for URLs encoding authentication
-                    # e.g. 'ftp://foo:bar@ftp.example.org/'
-                    r"(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?",
-                    # netloc, the hostname/domain part of the URL plus the optional port
-                    r"(?:",
-                    "|".join(hostname_variants),
-                    r")",
-                    r"(?::\d+)?",
-                )
-            )
-            relative_part = r"(?:/?|[/?]\S+)\Z"
-
-            if relative:
-                if absolute:
-                    parts: tuple[str, ...] = (
-                        r"^(",
-                        absolute_part,
-                        r")?",
-                        relative_part,
-                    )
-                else:
-                    parts = (r"^", relative_part)
-            else:
-                parts = (r"^", absolute_part, relative_part)
-
-            return re.compile("".join(parts), re.IGNORECASE)
 
         def __call__(
             self, *, relative: bool, absolute: bool, require_tld: bool
@@ -209,11 +135,7 @@ class URL(Validator):
         self.schemes = {s.lower() for s in schemes} if schemes else self.default_schemes
         self.require_tld = require_tld
 
-    def _repr_args(self) -> str:
-        return f"relative={self.relative!r}, absolute={self.absolute!r}"
 
-    def _format_error(self, value: str) -> str:
-        return self.error.format(input=value)
 
     def __call__(self, value: str) -> str:
         message = self._format_error(value)
@@ -279,8 +201,6 @@ class Email(Validator):
     def __init__(self, *, error: str | None = None):
         self.error: str = error or self.default_message
 
-    def _format_error(self, value: str) -> str:
-        return self.error.format(input=value)
 
     def __call__(self, value: str) -> str:
         message = self._format_error(value)
@@ -355,11 +275,7 @@ class Range(Validator):
             max_op=self.message_lte if self.max_inclusive else self.message_lt,
         )
 
-    def _repr_args(self) -> str:
-        return f"min={self.min!r}, max={self.max!r}, min_inclusive={self.min_inclusive!r}, max_inclusive={self.max_inclusive!r}"
 
-    def _format_error(self, value: _T, message: str) -> str:
-        return (self.error or message).format(input=value, min=self.min, max=self.max)
 
     def __call__(self, value: _T) -> _T:
         if self.min is not None and (
@@ -419,13 +335,7 @@ class Length(Validator):
         self.error = error
         self.equal = equal
 
-    def _repr_args(self) -> str:
-        return f"min={self.min!r}, max={self.max!r}, equal={self.equal!r}"
 
-    def _format_error(self, value: _SizedT, message: str) -> str:
-        return (self.error or message).format(
-            input=value, min=self.min, max=self.max, equal=self.equal
-        )
 
     def __call__(self, value: _SizedT) -> _SizedT:
         length = len(value)
@@ -461,11 +371,7 @@ class Equal(Validator):
         self.comparable = comparable
         self.error: str = error or self.default_message
 
-    def _repr_args(self) -> str:
-        return f"comparable={self.comparable!r}"
 
-    def _format_error(self, value: _T) -> str:
-        return self.error.format(input=value, other=self.comparable)
 
     def __call__(self, value: _T) -> _T:
         if value != self.comparable:
@@ -502,11 +408,7 @@ class Regexp(Validator):
         )
         self.error: str = error or self.default_message
 
-    def _repr_args(self) -> str:
-        return f"regex={self.regex!r}"
 
-    def _format_error(self, value: str | bytes) -> str:
-        return self.error.format(input=value, regex=self.regex.pattern)
 
     @typing.overload
     def __call__(self, value: str) -> str: ...
@@ -540,11 +442,7 @@ class Predicate(Validator):
         self.error: str = error or self.default_message
         self.kwargs = kwargs
 
-    def _repr_args(self) -> str:
-        return f"method={self.method!r}, kwargs={self.kwargs!r}"
 
-    def _format_error(self, value: typing.Any) -> str:
-        return self.error.format(input=value, method=self.method)
 
     def __call__(self, value: _T) -> _T:
         method = getattr(value, self.method)
@@ -570,11 +468,7 @@ class NoneOf(Validator):
         self.values_text = ", ".join(str(each) for each in self.iterable)
         self.error: str = error or self.default_message
 
-    def _repr_args(self) -> str:
-        return f"iterable={self.iterable!r}"
 
-    def _format_error(self, value: typing.Any) -> str:
-        return self.error.format(input=value, values=self.values_text)
 
     def __call__(self, value: typing.Any) -> typing.Any:
         try:
@@ -610,13 +504,7 @@ class OneOf(Validator):
         self.labels_text = ", ".join(str(label) for label in self.labels)
         self.error: str = error or self.default_message
 
-    def _repr_args(self) -> str:
-        return f"choices={self.choices!r}, labels={self.labels!r}"
 
-    def _format_error(self, value: typing.Any) -> str:
-        return self.error.format(
-            input=value, choices=self.choices_text, labels=self.labels_text
-        )
 
     def __call__(self, value: typing.Any) -> typing.Any:
         try:
@@ -640,18 +528,7 @@ class OneOf(Validator):
             choice. In the latter case, the string specifies the name
             of an attribute of the choice objects. Defaults to `str()`.
         """
-        valuegetter = valuegetter if callable(valuegetter) else attrgetter(valuegetter)
-        choices = tuple(self.choices)
-        labels = tuple(self.labels)
-        # Pad labels with empty strings if fewer than choices, truncate if more
-        padded_labels = labels[: len(choices)] + ("",) * max(
-            0, len(choices) - len(labels)
-        )
-
-        return (
-            (valuegetter(choice), label)
-            for choice, label in zip(choices, padded_labels, strict=True)
-        )
+        pass
 
 
 class ContainsOnly(OneOf):
@@ -672,9 +549,6 @@ class ContainsOnly(OneOf):
 
     default_message = "One or more of the choices you made was not in: {choices}."
 
-    def _format_error(self, value: typing.Sequence[typing.Any]) -> str:
-        value_text = ", ".join(str(val) for val in value)
-        return super()._format_error(value_text)
 
     def __call__(self, value: typing.Sequence[_T]) -> typing.Sequence[_T]:
         # We can't use set.issubset because does not handle unhashable types
@@ -697,9 +571,6 @@ class ContainsNoneOf(NoneOf):
 
     default_message = "One or more of the choices you made was in: {values}."
 
-    def _format_error(self, value: typing.Sequence[typing.Any]) -> str:
-        value_text = ", ".join(str(val) for val in value)
-        return super()._format_error(value_text)
 
     def __call__(self, value: typing.Sequence[_T]) -> typing.Sequence[_T]:
         for val in value:

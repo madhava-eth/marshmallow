@@ -37,41 +37,12 @@ def is_aware(datetime: dt.datetime) -> bool:
     )
 
 
-def from_timestamp(value: typing.Any) -> dt.datetime:
-    if value is True or value is False:
-        raise ValueError("Not a valid POSIX timestamp")
-    value = float(value)
-    if value < 0:
-        raise ValueError("Not a valid POSIX timestamp")
-
-    # Load a timestamp with utc as timezone to prevent using system timezone.
-    # Then set timezone to None, to let the Field handle adding timezone info.
-    try:
-        return dt.datetime.fromtimestamp(value, tz=dt.timezone.utc).replace(tzinfo=None)
-    except OverflowError as exc:
-        raise ValueError("Timestamp is too large") from exc
-    except OSError as exc:
-        raise ValueError("Error converting value to datetime") from exc
 
 
-def from_timestamp_ms(value: typing.Any) -> dt.datetime:
-    if value is True or value is False:
-        raise ValueError("Not a valid POSIX timestamp")
-    value = float(value)
-    return from_timestamp(value / 1000)
 
 
-def timestamp(
-    value: dt.datetime,
-) -> float:
-    if not is_aware(value):
-        # When a date is naive, use UTC as zone info to prevent using system timezone.
-        value = value.replace(tzinfo=dt.timezone.utc)
-    return value.timestamp()
 
 
-def timestamp_ms(value: dt.datetime) -> float:
-    return timestamp(value) * 1000
 
 
 def ensure_text_type(val: str | bytes) -> str:
@@ -88,7 +59,7 @@ def pluck(dictlist: list[dict[str, typing.Any]], key: str):
         >>> pluck(dlist, 'id')
         [1, 2]
     """
-    return [d[key] for d in dictlist]
+    pass
 
 
 # Various utilities for pulling keyed values from objects
@@ -153,9 +124,7 @@ def set_value(dct: dict[str, typing.Any], key: str, value: typing.Any):
 
 def callable_or_raise(obj):
     """Check that an object is callable, else raise a :exc:`TypeError`."""
-    if not callable(obj):
-        raise TypeError(f"Object {obj!r} is not callable.")
-    return obj
+    pass
 
 
 def timedelta_to_microseconds(value: dt.timedelta) -> int:
@@ -163,4 +132,4 @@ def timedelta_to_microseconds(value: dt.timedelta) -> int:
 
     https://github.com/python/cpython/blob/v3.13.1/Lib/_pydatetime.py#L805-L807
     """
-    return (value.days * (24 * 3600) + value.seconds) * 1000000 + value.microseconds
+    pass
